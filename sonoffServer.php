@@ -4,7 +4,6 @@
 # ITEAD Sonoff SWITCH Cloud Server
 #
 
-global $IOTServer, $uList, $xLogFile;
 // ============================ CONFIG START ======================
 $IOTServer = array(
     'serverIP'		=> '192.168.1.16',
@@ -21,6 +20,7 @@ $LogConsole = true;
 ini_set('date.timezone', 'Europe/Moscow');
 
 // ============================ CONFIG END   ======================
+global $IOTServer, $uList, $LogFile, $cList;
 
 
 require_once __DIR__ . '/vendor/autoload.php';
@@ -48,9 +48,6 @@ function xLog($conn, $level, $entity, $text) {
     return false;
 };
 
-
-//date_default_timezone_set('Europe/Moscow');
-
 // IPC Service
 $cServer = new Channel\Server('0.0.0.0', 2206);
 
@@ -63,7 +60,7 @@ $cServer->count = 1;
 
 // onMessage event
 $cServer->onMessage = function($conn, $data) use ($uList){
-    global $IOTServer, $uList;
+    global $IOTServer, $uList, $cList;
 
     // Get URL
     $requestURI = $_SERVER['REQUEST_URI'];
@@ -149,18 +146,27 @@ $cServer->onMessage = function($conn, $data) use ($uList){
 		}
 	    }
 
+	    if (!in_array($_GET['state'], array('on', 'off'))) {
+		    $conn->send(json_encode(array('error' => 2, 'reason' => $_GET['state'].': incorrect state, only [on, off] is accepted')));
+		    $conn->close();
+		    return;
+	    }
+
 	    // Search for user
 	    foreach ($uList as $uk => $uv) {
 		if (isset($uv['deviceInfo']['apikey']) && ($uv['deviceInfo']['apikey'] == $_GET['apikey'])) {
-		    // GOT IT! Send update request to WS worker
-		    Channel\Client::publish('update', serialize(array('apikey' => $_GET['apikey'], 'state' => $_GET['state'], 'connID' => $conn->id)));
-		    
 		    // LOG
 		    xLog($conn, "I", "HTTP", "Update request for [".$_GET['apikey']."] => [".$_GET['state']."]");
 
+		    // GOT IT! Send update request to WS worker
+		    Channel\Client::publish('update', serialize(array('apikey' => $_GET['apikey'], 'state' => $_GET['state'], 'connID' => $conn->id)));
+
+		    // Save client into $cList array with pending request info
+		    $cList[$conn->id] = array('connection' => $conn, 'apikey' => $_GET['apikey'], 'state' => $_GET['state']);
+
 		    // Wait for answer via Channel or close connection with TIMEOUT in case if no resp via Channel
-		    $conn->send(json_encode(array('error' => 0, 'reason' => 'Request is sent in background')));
-		    $conn->close();
+		//    $conn->send(json_encode(array('error' => 0, 'reason' => 'Request is sent in background')));
+		//    $conn->close();
 		    return;
 		}
 	    }
@@ -180,11 +186,33 @@ $cServer->onMessage = function($conn, $data) use ($uList){
     return;
 };
 
+$cServer->onClose = function($conn) {
+    global $cList;
+
+    //print "#> onClose(".$conn->id.")\n";
+
+    if (isset($cList[$conn->id])) {
+	unset($cList[$conn->id]);
+    }
+};
+
 $cServer->onWorkerStart = function() {
     Channel\Client::connect('192.168.1.16', 2206);
     Channel\Client::on('uList', function($data) { 
 	global $uList; 
 	$uList = unserialize($data); 
+    });
+    Channel\Client::on('update.response', function($data) {
+	global $cList;
+	$resp = unserialize($data);
+	xLog(null, "D", "HTTP", "Update response received: ".$data);
+
+	if (isset($cList[$resp['connID']])) {
+	    // Socket is still waiting. Write response
+	    $cList[$resp['connID']]['connection']->send(json_encode($resp));
+	    $cList[$resp['connID']]['connection']->close();
+	}
+
     });    
 };
 
@@ -237,6 +265,34 @@ $cWorker->onMessage = function($conn, $data) {
     }
 
     if (!isset($req['action'])) {
+	// Check if this is REPLY
+	if (isset($req['sequence'])) {
+	    // Check for sequence QUEUE in requests
+	    if (isset($uList[$conn->id]) && isset($uList[$conn->id]['info']) && isset($uList[$conn->id]['info']['cmd']) && isset($uList[$conn->id]['info']['cmd'][$req['sequence']])) {
+		$seq      = $uList[$conn->id]['info']['cmd'][$req['sequence']][0];
+		$setState = $uList[$conn->id]['info']['cmd'][$req['sequence']][1];
+
+		// Generate REPLY
+		xLog($conn, "D", "WS", "Unparking reply for request [".$seq."] for setting [".$setState."][error=".$req['error']."]");
+		Channel\Client::publish('update.response', serialize(array('connID' => $seq, 'error' => $req['error'], 'state' => $setState)));
+		unset($uList[$conn->id]['info']['cmd'][$req['sequence']]);
+
+		// Update internal state info if request is complete
+		if (!$req['error']) {
+		    $uList[$conn->id]['params']['switch'] = $setState;
+		    $uList[$conn->id]['info']['lastUpdateTime'] = time();
+
+		    // Update STATE in WEB server
+		    Channel\Client::publish('uList', sendUList($uList));
+		}
+
+	    } else {
+		xLog($conn, "D", "WS", "Received unrequested sequence [".$req['sequence']."]");
+	    }
+	    return;
+	}
+
+
 	xLog($conn, "E", "WS", "Action field is lost in JSON request");
 	$conn->send(json_encode(array('error' => 1, 'reason' => 'Action is not set')));
 	return;
@@ -327,8 +383,8 @@ $cWorker->onMessage = function($conn, $data) {
 		foreach ($req['params'] as $k => $v) { $pList []= "[".$k."=".$v."]"; }
 
 		xLog($conn, "D", "WS", "Received [update] request: ".join("", $pList));
-		$uList [$conn->id]['params'] = $req['params'];
-		$uList [$conn->id]['info']['lastUpdateTime'] = time();
+		$uList[$conn->id]['params'] = $req['params'];
+		$uList[$conn->id]['info']['lastUpdateTime'] = time();
 
 		$conn->send(json_encode(array(
 		    "error"	=> 0,
@@ -376,7 +432,12 @@ $cWorker->onWorkerStart = function() {
 	    foreach ($uList as $uk => $uv) {
 		if (isset($uv['info']['deviceInfo']['apikey']) && ($uv['info']['deviceInfo']['apikey'] == $req['apikey'])) {
 		    // Found. Send UPDATE request from server
-		    $cmd = json_encode(array('userAgent' => 'app', 'action' => 'update', 'deviceid' => $uv['info']['deviceInfo']['deviceid'], 'apikey' => $uv['info']['sessionApiKey'], 'sequence' => time()."", "ts" => 0, "params" => array("switch" => $req['state']), "from" => "app"));
+		    $seq = time();
+		    // Mark pending request
+		    $uList[$uk]['info']['cmd'][$seq] = array($req['connID'], $req['state']);
+
+		    // Prepare cmd
+		    $cmd = json_encode(array('userAgent' => 'app', 'action' => 'update', 'deviceid' => $uv['info']['deviceInfo']['deviceid'], 'apikey' => $uv['info']['sessionApiKey'], 'sequence' => $seq."", "ts" => 0, "params" => array("switch" => $req['state']), "from" => "app"));
 		    xLog(false, "D", "WS-Channel", "Send cmd: ".$cmd);
 		    $uv['connection']->send($cmd);
 		    return;    
