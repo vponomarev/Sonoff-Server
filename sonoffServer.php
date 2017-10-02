@@ -93,14 +93,15 @@ $cServer->onMessage = function($conn, $data) use ($uList){
 	    break;
 
 	// Request for list of active devices
+	case '/':
 	case '/list':
-	    $msg = '<html><body><h1>List of active users</h1>';
-	    $msg .= var_export($uList, true);
-	    $msg .= '['.count($uList).']<br/>';
-	    foreach ($uList as $uk => $uv) {
-		$msg .= $uv['id']." ".$uv['remoteAddress']."<br/>\n";
+	    // Load template
+	    if (($data = file_get_contents("template/list.html")) !== FALSE) {
+		$conn->send($data);
+	    } else {
+		$conn->send("<html><body>Cannot open template file [teplate/list.html]</body></html>");
 	    }
-	    $conn->send($msg);
+
 	    $conn->close();
 	    return;
 
