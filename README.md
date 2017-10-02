@@ -34,6 +34,8 @@ WEB GUI can be accessed via:
 ```
 https://<serverIP>:<configPort>/
 ```
+WEB GUI example:
+![](https://github.com/vponomarev/Sonoff-Server/blob/master/doc/Sonoff-Server-GUI.PNG)
 
 # API
 1) List of connected devices:
