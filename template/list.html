@@ -9,6 +9,8 @@ body { font-family: 'YS Text',sans-serif; }
 
 #statusBlock { background-color: #EEEEEE; border: 1px solid #AAAAAA; }
 #statusResult { background-color: yellow; }
+
+#updateLOG { background-color: #EEEEEE; width: 660; }
 </style>
 </head>
 <body>
@@ -26,6 +28,8 @@ body { font-family: 'YS Text',sans-serif; }
 <table id="statusBlock" width="660">
 <tr><td id="statusTime" width="330"></td><td>&nbsp;</td><td id="statusResult" width="330"></td></tr>
 </table>
+<br/>
+<div id="updateLOG"></div>
 
 <script type="text/javascript">
 function setState(apiKey,state) {
@@ -38,19 +42,25 @@ function setState(apiKey,state) {
 				try {
 					var res = JSON.parse(req.responseText);
 					if (res['error'] == 0) {
-						alert('Resulting state: '+res['state']);
+						document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', 'OK: new state = <b>'+state+'</b><br/>\n');
+						// alert('Resulting state: '+res['state']);
+
+						// Call update
+						periodicUpdate();
 					}
 				} catch (e) {
-					alert('Error parsing JSON: '+req.responseText);
+					 //alert('Error parsing JSON: '+req.responseText);
+					document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', 'FAILED: new state = <b>'+state+'</b><br/>\n');
 				}
 				return;
 			}
 			// Request error
-			alert('HTTP Error: '+req.status);
+			document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', 'FAILED: new state = <b>'+state+'</b>, HTTP ERROR: '+req.status+'<br/>\n');
+			// alert('HTTP Error: '+req.status);
 			return;
 		}
 	});
-	req.open("GET", "/api/set?apikey="+apikey+'&state='+state);
+	req.open("GET", "/api/set?apikey="+apiKey+'&state='+state);
 	req.send();
 }
 function listDevices() {
@@ -68,7 +78,10 @@ function listDevices() {
 					tb.innerHTML = '';
 					for (eX in res) {
 					    var e = res[eX];
-					    tb.innerHTML += '<tr><td>'+e['apikey']+'</td><td>'+e['model']+'</td><td>'+e['deviceid']+'</td><td>'+e['rssi']+'</td><td>'+e['lastSeen']+'</td><td>'+e['lastUpdate']+'</td><td>'+e['state']+'</td><td>.</td></tr>';
+					    tb.innerHTML += '<tr><td>'+e['apikey']+'</td><td>'+e['model']+'</td><td>'+e['deviceid']+'</td><td>'+e['rssi']+'</td><td>'+e['lastSeen']+'</td>' + 
+						'<td>'+e['lastUpdate']+'</td><td>'+e['state']+'</td>' + 
+						'<td><input type="button" value="ON" onclick="setState(\''+e['apikey']+'\', \'on\');"/> '+
+						'<input type="button" value="OFF" onclick="setState(\''+e['apikey']+'\',\'off\');"/></td></tr>';
 					}
 					document.getElementById('statusResult').innerHTML = 'OK';
 					//alert('Incoming list of devices: '+req.responseText);
