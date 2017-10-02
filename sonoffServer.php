@@ -250,7 +250,7 @@ $cWorker->onConnect = function($conn) {
 $cWorker->onClose = function($conn) {
     global $uList;
     unset($uList[$conn->id]);
-    xLog($conn, "I", "WS", "Disconnect from: ".$conn->getRemoteAddress()." [TOTAL: ".$count($uList)."]");
+    xLog($conn, "I", "WS", "Disconnect from: ".$conn->getRemoteAddress()." [TOTAL: ".count($uList)."]");
     Channel\Client::publish('uList', serialize(array_keys($uList)));
 };
 
@@ -314,6 +314,15 @@ $cWorker->onMessage = function($conn, $data) {
 
 	// Write log
 	xLog($conn, "I", "WS", "Registered new device [deviceID=".$req['deviceid']."][apikey=".$req['apikey']."][mode=".$req['model']."][romVersion=".$req['romVersion']."][version=".$req['version']."][new.apikey=".$newApiKey."]");
+
+	// Check if there're devices with the same apikey and force deregister in case of conflict
+	foreach ($uList as $uK => $uV) {
+	    if (isset($uV['info']) && isset($uV['info']['deviceInfo']) && isset($uV['info']['deviceInfo']['apikey']) && ($uV['info']['deviceInfo']['apikey'] == $req['apikey'])) {
+		// FORCE DEREGISTER
+		xLog($conn, "E", "WS", "Force deregister another device [".$uK."] with the same apikey");
+		unset($uList[$uK]);
+	    }
+	}
 
 	// - Save device info into local DB
 	$uList[$conn->id]['info']['deviceInfo'] = $req;
