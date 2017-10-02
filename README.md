@@ -2,6 +2,11 @@
 PHP based implementation of Sonoff cloud server, running in your own home network.
 You can control your Sonoff switches without need of changing basic firmware.
 
+# Supported devices
+In theory all Sonoff devices are supported.
+But for now, only "Sonoff Basic" will work fine.
+Please send me LOG file if you want to add support of any other Sonoff device.
+
 # Requirements
 1) Linux based server (Raspberry PI or any generic modern Linux)
 2) PHP 7.x (but PHP 5.x should also be ok)
