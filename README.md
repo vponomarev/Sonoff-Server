@@ -25,10 +25,42 @@ pi$ git clone https://github.com/vponomarev/Sonoff-Server.git
 
 4) Edit configuration section in sonoffServer.php file
 
-5) Run server using:
+# Running
+Run server using:
 ```
 pi$ php ./sonoffServer.php start
 ```
+WEB GUI can be accessed via:
+```
+https://<serverIP>:<configPort>/
+```
+
+# API
+1) List of connected devices:
+```
+https://<serverIP>:<configPort>/api/get
+```
+Returns JSON array with connected devices, example:
+```
+[{"apikey":"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx","deviceid":"10000xxxxx","model":"ITA-GZ1-GL","lastUpdate":2572,"lastSeen":15,"rssi":-67,"state":"off"}]
+```
+
+2) Update state request:
+```
+https://<serverIP>:<configPort>/api/set?apikey=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx&state=off
+```
+Where:
+apikey - Device API Key
+state - new state ("on" or "off")
+
+Return JSON array with result:
+```
+{"connID":26,"error":0,"state":"off"}
+```
+Where:
+error - error code, 0 is "ok"
+state - new state
+
 # Configuring Sonoff
 First, you need to configure your device via eWeLink software (there is also an alternative way, i'll explain it later).
 
