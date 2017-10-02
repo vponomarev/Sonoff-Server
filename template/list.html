@@ -1,0 +1,102 @@
+<html>
+<head>
+<style type="text/css">
+body { font-family: 'YS Text',sans-serif; }
+#tList TD { border-top: 1px solid #AAAAAA; }
+#tList thead TD { background-color: #EEEEEE; }
+#tList tbody TD { background-color: yellow; }
+#tList { border-bottom: 1px solid #AAAAAA; }
+
+#statusBlock { background-color: #EEEEEE; border: 1px solid #AAAAAA; }
+#statusResult { background-color: yellow; }
+</style>
+</head>
+<body>
+<h1>List of active devices</h1>
+<table id="tList">
+<thead>
+<tr><td width="330">API KEY</td><td>Model</td><td>DeviceID</td><td>RSSI</td><td>Last Seen</td><td>Last update</td><td width="70">State</td><td width="120">Set state</td></tr>
+</thead>
+<tbody id="tBody">
+<!-- <tr><td>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</td><td>ITA-GZ1-GL</td><td>100008db29</td><td>-60 db</td><td>15 sec</td><td>600 sec</td><td>ON</td><td><input type="button" value="ON"/> <input type="button" value="OFF"/></tr> -->
+</tbody>
+</table>
+<br/>
+<h3>Last update information</h3>
+<table id="statusBlock" width="660">
+<tr><td id="statusTime" width="330"></td><td>&nbsp;</td><td id="statusResult" width="330"></td></tr>
+</table>
+
+<script type="text/javascript">
+function setState(apiKey,state) {
+	var req = new XMLHttpRequest();
+	req.addEventListener('readystatechange', function() {
+		if (req.readyState==4) {
+			// Request complete
+			if (req.status==200) {
+				// HTTP OK
+				try {
+					var res = JSON.parse(req.responseText);
+					if (res['error'] == 0) {
+						alert('Resulting state: '+res['state']);
+					}
+				} catch (e) {
+					alert('Error parsing JSON: '+req.responseText);
+				}
+				return;
+			}
+			// Request error
+			alert('HTTP Error: '+req.status);
+			return;
+		}
+	});
+	req.open("GET", "/api/set?apikey="+apikey+'&state='+state);
+	req.send();
+}
+function listDevices() {
+	var req = new XMLHttpRequest();
+	req.addEventListener('readystatechange', function() {
+		if (req.readyState==4) {
+			// Request complete
+			if (req.status==200) {
+				// HTTP OK
+				try {
+					var res = JSON.parse(req.responseText);
+					
+					// Clear body
+					var tb = document.getElementById('tBody');
+					tb.innerHTML = '';
+					for (eX in res) {
+					    var e = res[eX];
+					    tb.innerHTML += '<tr><td>'+e['apikey']+'</td><td>'+e['model']+'</td><td>'+e['deviceid']+'</td><td>'+e['rssi']+'</td><td>'+e['lastSeen']+'</td><td>'+e['lastUpdate']+'</td><td>'+e['state']+'</td><td>.</td></tr>';
+					}
+					document.getElementById('statusResult').innerHTML = 'OK';
+					//alert('Incoming list of devices: '+req.responseText);
+				} catch (e) {
+					document.getElementById('statusResult').innerHTML = 'Error parsing JSON: '+req.responseText;
+					//alert('Error parsing JSON: '+req.responseText);
+				}
+				return;
+			}
+			// Request error
+			document.getElementById('statusResult').innerHTML = 'HTTP Error: '+req.status;
+			//alert('HTTP Error: '+req.status);
+			return;
+		}
+	});
+	req.open("GET", "/api/get");
+	req.send();
+}
+
+function periodicUpdate() {
+    var d = new Date();
+    document.getElementById('statusTime').innerHTML = d.toLocaleString();
+    document.getElementById('statusResult').innerHTML = 'in progress';
+
+    listDevices();
+}
+
+// Request list of devices in loop
+periodicUpdate();
+setInterval(periodicUpdate, 10000);
+</script>
