@@ -4,6 +4,11 @@
 # ITEAD Sonoff SWITCH Cloud Server
 #
 
+#
+# (v) Vitaly Ponomarev, vitaly.ponomarev@gmail.com
+# Publish date: 2017/10/05
+#
+
 // ============================ CONFIG START ======================
 $IOTServer = array(
     'serverIP'		=> '192.168.1.16',
@@ -15,17 +20,39 @@ $IOTServer = array(
     ),
 );
 $LogFile = "/home/pi/phpWS/sonoff.log";
+$configFile = "/home/pi/phpWS/sonoffServer.config.json";
 $LogConsole = true;
 
 ini_set('date.timezone', 'Europe/Moscow');
 
 // ============================ CONFIG END   ======================
-global $IOTServer, $uList, $LogFile, $cList;
+global $IOTServer, $uList, $LogFile, $cList, $configFile, $config;
 
 
 require_once __DIR__ . '/vendor/autoload.php';
 use Workerman\Worker;
 use Workerman\Connection\AsyncTcpConnection;
+
+//
+// Config file management
+function loadConfig() {
+    global $config, $configFile;
+    
+    if (($data = file_get_contents($configFile)) == FALSE) {
+	// Cannot read file
+	return false;
+    }
+
+    // Try to decode JSON
+    if (($c = json_decode($data, true)) !== NULL) {
+	$config = $c;
+    } else {
+	// Cannot parse JSON
+	return false;
+    }
+    return true;
+}
+
 
 // Logger
 function xLog($conn, $level, $entity, $text) {
@@ -60,14 +87,14 @@ $cServer->count = 1;
 
 // onMessage event
 $cServer->onMessage = function($conn, $data) use ($uList){
-    global $IOTServer, $uList, $cList;
+    global $IOTServer, $uList, $cList, $config;
 
     // Get URL
     $requestURI = $_SERVER['REQUEST_URI'];
     if (preg_match("#^(.+?)\?#", $requestURI, $m)) {
 	$requestURI = $m[1];
     }
-
+    xLog($conn, "D", "HTTP", "Received request to: [".$requestURI."]");
     
     switch($requestURI) {
 	// Dispatch request
@@ -105,6 +132,13 @@ $cServer->onMessage = function($conn, $data) use ($uList){
 	    $conn->close();
 	    return;
 
+	// Request for config reload
+	case '/reload':
+	    // Try to load config file
+	    $conn->send("<html><body>Load config request: ".(loadConfig()?"DONE":"FAILED")."</br></body></html>\n");
+	    $conn->close();
+	    return;
+
 	// API: List of connected devices
 	case '/api/get':
 	    $aList = array();
@@ -116,6 +150,9 @@ $cServer->onMessage = function($conn, $data) use ($uList){
 			'model'		=> isset($uv['deviceInfo']['model'])?$uv['deviceInfo']['model']:'',
 			'lastUpdate'	=> isset($uv['lastUpdateTime'])?(time()-$uv['lastUpdateTime']):-1,
 		    );
+		    if (isset($config['devices']) && isset($config['devices'][$uv['deviceInfo']['apikey']]) && isset($config['devices'][$uv['deviceInfo']['apikey']]['alias'])) {
+			$rec['alias']	= $config['devices'][$uv['deviceInfo']['apikey']]['alias'];
+		    }
 		    // Calculate lastSeen time
 		    $lastSeen = max(isset($uv['lastUpdateTime'])?$uv['lastUpdateTime']:-1, isset($uv['lastPingTime'])?$uv['lastPingTime']:-1);
 		    if ($lastSeen > 0) {
@@ -275,7 +312,8 @@ $cWorker->onMessage = function($conn, $data) {
 
 		// Generate REPLY
 		xLog($conn, "D", "WS", "Unparking reply for request [".$seq."] for setting [".$setState."][error=".$req['error']."]");
-		Channel\Client::publish('update.response', serialize(array('connID' => $seq, 'error' => $req['error'], 'state' => $setState)));
+		xLog($conn, "I", "WS", ($req['error']?"FAILED WITH ERROR [".$req['error']."]":"Confirmed")." change state request for [".$uList[$conn->id]['info']['deviceInfo']['apikey']."] => [".$setState."]");
+		Channel\Client::publish('update.response', serialize(array('connID' => $seq, 'error' => $req['error'], 'state' => $setState, 'apikey' => $uList[$conn->id]['info']['deviceInfo']['apikey'])));
 		unset($uList[$conn->id]['info']['cmd'][$req['sequence']]);
 
 		// Update internal state info if request is complete
@@ -309,6 +347,7 @@ $cWorker->onMessage = function($conn, $data) {
 	// Process register request
 
 	// Generate apiKey for current device
+	// This key is used locally, so it's ok if it's the same for all devices
 	$newApiKey = "df6725f6-0b86-4415-9951-9cf8900c7825";
 	$uList[$conn->id]['info']['sessionApiKey'] = $newApiKey;
 
@@ -392,7 +431,7 @@ $cWorker->onMessage = function($conn, $data) {
 		$pList = array();
 		foreach ($req['params'] as $k => $v) { $pList []= "[".$k."=".$v."]"; }
 
-		xLog($conn, "D", "WS", "Received [update] request: ".join("", $pList));
+		xLog($conn, "I", "WS", "Received [update] notification: ".join("", $pList));
 		$uList[$conn->id]['params'] = $req['params'];
 		$uList[$conn->id]['info']['lastUpdateTime'] = time();
 
@@ -435,7 +474,7 @@ $cWorker->onWorkerStart = function() {
     Channel\Client::on('update', function($data) { 
 	global $uList; 
 	$req = unserialize($data);
-	xLog(false, "I", "WS-Channel", "Received update request: ".$data);
+	xLog(false, "D", "WS-Channel", "Received update request: ".$data);
 
 	if (isset($req['apikey'])) {
 	    // Search for requested deviceID

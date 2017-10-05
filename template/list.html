@@ -4,8 +4,11 @@
 body { font-family: 'YS Text',sans-serif; }
 #tList TD { border-top: 1px solid #AAAAAA; }
 #tList thead TD { background-color: #EEEEEE; }
-#tList tbody TD { background-color: yellow; }
+#tList tbody TD { background-color: #FFFF00; }
 #tList { border-bottom: 1px solid #AAAAAA; }
+#tList tbody .on TD { background-color: #FFFF00; }
+#tList tbody .off TD { background-color: #F0F000; }
+
 
 #statusBlock { background-color: #EEEEEE; border: 1px solid #AAAAAA; }
 #statusResult { background-color: yellow; }
@@ -17,10 +20,10 @@ body { font-family: 'YS Text',sans-serif; }
 <h1>List of active devices</h1>
 <table id="tList">
 <thead>
-<tr><td width="330">API KEY</td><td>Model</td><td>DeviceID</td><td>RSSI</td><td>Last Seen</td><td>Last update</td><td width="70">State</td><td width="120">Set state</td></tr>
+<tr><td width="330">Alias / API KEY</td><td>Model</td><td>DeviceID</td><td>RSSI</td><td>Last Seen</td><td>Last update</td><td width="70">State</td><td width="120">Set state</td></tr>
 </thead>
 <tbody id="tBody">
-<!-- <tr><td>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</td><td>ITA-GZ1-GL</td><td>100008db29</td><td>-60 db</td><td>15 sec</td><td>600 sec</td><td>ON</td><td><input type="button" value="ON"/> <input type="button" value="OFF"/></tr> -->
+<!-- <tr><td>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</td><td>ITA-GZ1-GL</td><td>xxxxxxxxxx</td><td>-60 db</td><td>15 sec</td><td>600 sec</td><td>ON</td><td><input type="button" value="ON"/> <input type="button" value="OFF"/></tr> -->
 </tbody>
 </table>
 <br/>
@@ -34,7 +37,8 @@ body { font-family: 'YS Text',sans-serif; }
 <script type="text/javascript">
 function setState(apiKey,state) {
 	var req = new XMLHttpRequest();
-	req.addEventListener('readystatechange', function() {
+	req.onreadystatechange = (function(key) {
+		return function() {
 		if (req.readyState==4) {
 			// Request complete
 			if (req.status==200) {
@@ -42,24 +46,26 @@ function setState(apiKey,state) {
 				try {
 					var res = JSON.parse(req.responseText);
 					if (res['error'] == 0) {
-						document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', 'OK: new state = <b>'+state+'</b><br/>\n');
-						// alert('Resulting state: '+res['state']);
+						document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', '['+key+'] OK: new state = <b>'+state+'</b><br/>\n');
 
 						// Call update
 						periodicUpdate();
+					} else {
+						document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', '['+key+'] FAILED: new state = <b>'+state+'</b> with error: '+res['error']+'<br/>\n');
 					}
 				} catch (e) {
 					 //alert('Error parsing JSON: '+req.responseText);
-					document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', 'FAILED: new state = <b>'+state+'</b><br/>\n');
+					document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', '['+key+'] FAILED parsing JSON for: new state = <b>'+state+'</b><br/>\n');
 				}
 				return;
 			}
 			// Request error
-			document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', 'FAILED: new state = <b>'+state+'</b>, HTTP ERROR: '+req.status+'<br/>\n');
+			document.getElementById('updateLOG').insertAdjacentHTML('afterbegin', '['+key+'] FAILED: new state = <b>'+state+'</b>, HTTP ERROR: '+req.status+'<br/>\n');
 			// alert('HTTP Error: '+req.status);
 			return;
 		}
-	});
+		};
+	})(apiKey);
 	req.open("GET", "/api/set?apikey="+apiKey+'&state='+state);
 	req.send();
 }
@@ -78,7 +84,15 @@ function listDevices() {
 					tb.innerHTML = '';
 					for (eX in res) {
 					    var e = res[eX];
-					    tb.innerHTML += '<tr><td>'+e['apikey']+'</td><td>'+e['model']+'</td><td>'+e['deviceid']+'</td><td>'+e['rssi']+'</td><td>'+e['lastSeen']+'</td>' + 
+					    var classString = '';
+					    if (e['state'] == 'on') {
+						classString = ' class="on"';
+					    }
+					    if (e['state'] == 'off') {
+						classString = ' class="off"';
+					    }
+
+					    tb.innerHTML += '<tr '+classString+'><td title="'+e['apikey']+'">'+(('alias' in e)?e['alias']:e['apikey'])+'</td><td>'+e['model']+'</td><td>'+e['deviceid']+'</td><td>'+e['rssi']+'</td><td>'+e['lastSeen']+'</td>' + 
 						'<td>'+e['lastUpdate']+'</td><td>'+e['state']+'</td>' + 
 						'<td><input type="button" value="ON" onclick="setState(\''+e['apikey']+'\', \'on\');"/> '+
 						'<input type="button" value="OFF" onclick="setState(\''+e['apikey']+'\',\'off\');"/></td></tr>';
