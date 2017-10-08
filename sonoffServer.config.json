@@ -1,0 +1,21 @@
+{
+    // Configuration parameters
+    "config": {
+	// Logging configuration
+	"log": {
+	    // Log file name
+	    "fileName":"~/NAS/sonoff.log",
+	    // Flag: show logs in console
+	    "console":1
+	},
+	// PHP TimeZone (for default_timezone_set)
+	"timezone": "Europe/Moscow"
+    },
+
+    // Personal configuration for devices
+    "devices":{
+	"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx":{
+	    "alias":"Koridor #1"
+	},
+    }
+}

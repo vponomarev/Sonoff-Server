@@ -6,10 +6,12 @@
 
 #
 # (v) Vitaly Ponomarev, vitaly.ponomarev@gmail.com
-# Publish date: 2017/10/05
+# Publish date: 2017/10/08
 #
 
 // ============================ CONFIG START ======================
+$configFile = "sonoffServer.config.json";
+
 $IOTServer = array(
     'serverIP'		=> '192.168.1.16',
     'configPort'	=> 2443,
@@ -19,11 +21,7 @@ $IOTServer = array(
 	'local_pk'		=> './ssl/selfcert.in.pem',
     ),
 );
-$LogFile = "/home/pi/phpWS/sonoff.log";
-$configFile = "/home/pi/phpWS/sonoffServer.config.json";
-$LogConsole = true;
 
-ini_set('date.timezone', 'Europe/Moscow');
 
 // ============================ CONFIG END   ======================
 global $IOTServer, $uList, $LogFile, $cList, $configFile, $config;
@@ -32,6 +30,21 @@ global $IOTServer, $uList, $LogFile, $cList, $configFile, $config;
 require_once __DIR__ . '/vendor/autoload.php';
 use Workerman\Worker;
 use Workerman\Connection\AsyncTcpConnection;
+
+
+//
+// Stop with error if we cannot load config file
+if (!loadConfig()) {
+    die("Cannot load configuration file [".$configFile."]\n");
+}
+
+if (!isset($config['config']['log']['fileName'])) {
+    print "WARNING. Log file is not specified, logs will be displayed only into console!\n";
+}
+
+// Init TimeZone
+ini_set('date.timezone', isset($config['timezone'])?$config['timezone']:'Europe/Moscow');
+
 
 //
 // Config file management
@@ -43,9 +56,22 @@ function loadConfig() {
 	return false;
     }
 
+    // search and remove comments like /* */ and //
+    $data = preg_replace("#(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|([\s\t]//.*)|(^//.*)#", '', $data);
+
     // Try to decode JSON
     if (($c = json_decode($data, true)) !== NULL) {
 	$config = $c;
+
+	// Repopulate some sections
+	if (!isset($config['config']))
+	    $config['config'] = array();
+
+	// Enable console logging if [log] section is not defined
+	if (!isset($config['config']['log']))
+	    $config['config']['log']['console'] = true;
+
+
     } else {
 	// Cannot parse JSON
 	return false;
@@ -56,17 +82,18 @@ function loadConfig() {
 
 // Logger
 function xLog($conn, $level, $entity, $text) {
-    global $LogFile, $LogConsole, $uList;
+    global $config, $uList;
 
     $identity = "[?]";
     if (is_object($conn) && isset($conn->id)) {
         $identity = "[".$conn->id. ((isset($uList[$conn->id]) && isset($uList[$conn->id]['info']['deviceInfo']['apikey']))?", ".$uList[$conn->id]['info']['deviceInfo']['apikey']:", A=".$conn->getRemoteAddress())."]";
     }
     $LogInfo = strftime("%F %T")." ".$level." ".$entity." ".$identity." ".$text."\n";
-    if ($LogConsole)
+
+    if ($config['config']['log']['console'])
 	print $LogInfo;
 
-    if ($f = fopen($LogFile, "a")) {
+    if (isset($config['config']['log']['fileName']) && ($f = fopen($config['config']['log']['fileName'], "a"))) {
 	fwrite($f, $LogInfo);
 	fclose($f);
 
@@ -74,6 +101,7 @@ function xLog($conn, $level, $entity, $text) {
     }
     return false;
 };
+
 
 // IPC Service
 $cServer = new Channel\Server('0.0.0.0', 2206);
@@ -235,6 +263,8 @@ $cServer->onClose = function($conn) {
 };
 
 $cServer->onWorkerStart = function() {
+    loadConfig();
+
     Channel\Client::connect('192.168.1.16', 2206);
     Channel\Client::on('uList', function($data) { 
 	global $uList; 
@@ -249,6 +279,7 @@ $cServer->onWorkerStart = function() {
 	    // Socket is still waiting. Write response
 	    $cList[$resp['connID']]['connection']->send(json_encode($resp));
 	    $cList[$resp['connID']]['connection']->close();
+	    unset($resp['connID']);
 	}
 
     });    
@@ -489,13 +520,11 @@ $cWorker->onWorkerStart = function() {
 		    $cmd = json_encode(array('userAgent' => 'app', 'action' => 'update', 'deviceid' => $uv['info']['deviceInfo']['deviceid'], 'apikey' => $uv['info']['sessionApiKey'], 'sequence' => $seq."", "ts" => 0, "params" => array("switch" => $req['state']), "from" => "app"));
 		    xLog(false, "D", "WS-Channel", "Send cmd: ".$cmd);
 		    $uv['connection']->send($cmd);
-		    return;    
+		    return;
 		}
 	    }
 	}
-	
-
-    });    
+    });
 
 };
 
