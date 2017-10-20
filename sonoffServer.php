@@ -6,7 +6,7 @@
 
 #
 # (v) Vitaly Ponomarev, vitaly.ponomarev@gmail.com
-# Publish date: 2017/10/08
+# Publish date: 2017/10/21
 #
 
 // ============================ CONFIG START ======================
@@ -354,6 +354,16 @@ $cWorker->onMessage = function($conn, $data) {
 
 		    // Update STATE in WEB server
 		    Channel\Client::publish('uList', sendUList($uList));
+
+		    // Send update state notification to Client connection
+		    $xd = array('apikey' => $uList[$conn->id]['info']['deviceInfo']['apikey'], 
+				'params' => $uList[$conn->id]['params']
+		    );
+		    $xd['params']['switch'] = $setState;
+
+		    xLog($conn, "D", "WS-Notify", "Sending update notification about state change: ".json_encode($xd, true));
+		    Channel\Client::publish('update.notify', serialize($xd));
+
 		}
 
 	    } else {
@@ -425,7 +435,7 @@ $cWorker->onMessage = function($conn, $data) {
 			),
 		),
 		"hb"		=> 1,
-		"hbInterval"	=> 30,
+		"hbInterval"	=> 145,
 	)));
 	Channel\Client::publish('uList', sendUList($uList));
     } else {
@@ -472,6 +482,12 @@ $cWorker->onMessage = function($conn, $data) {
 		    "apikey"	=> $req['apikey'],
 		)));
 		Channel\Client::publish('uList', sendUList($uList));
+
+		// Send update state notification to Client connection
+		$xd = array('apikey' => $uList[$conn->id]['info']['deviceInfo']['apikey'], 'params' => $req['params']);
+		xLog($conn, "D", "WS-Notify", "Sending update notification about state change: ".json_encode($xd, true));
+		Channel\Client::publish('update.notify', serialize($xd));
+
 		break;
 	    default:
 		// Unsupported request
@@ -494,6 +510,7 @@ $cWorker->onWebSocketPing = function($conn) {
     $uList [$conn->id]['info']['lastPingTime'] = time();
     Channel\Client::publish('uList', sendUList($uList));
 
+    // Send PONG packet
     $conn->send(pack('H*', '8a00'), true);
 };
 
