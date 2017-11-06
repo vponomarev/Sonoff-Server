@@ -15,20 +15,22 @@ Please send me LOG file if you want to add support of any other Sonoff device.
 1) Install required libs via PHP composer
 ```pi$ mkdir ~/phpSonoff
 pi$ cd ~/phpSonoff
-pi$ composer install workerman/workerman workeman/channel
+pi$ composer require workerman/workerman workerman/channel
 ```
 2) Download Sonoff Server software
 ```
 pi$ git clone https://github.com/vponomarev/Sonoff-Server.git
+pi$ mv Sonoff-Server/* .
+pi$ rm -rf Sonoff-Server/
 ```
-3) Create your own SSL certificates (self signed is ok)
+3) Create your own SSL certificates (you can also use self signed from this package)
 
 4) Edit configuration section in sonoffServer.php file
 
 # Running
 Run server using:
 ```
-pi$ php ./sonoffServer.php start
+pi$ php ./sonoffServer.php start -d
 ```
 WEB GUI can be accessed via:
 ```
