@@ -4,7 +4,7 @@
 	// Logging configuration
 	"log": {
 	    // Log file name
-	    "fileName":"~/NAS/sonoff.log",
+	    "fileName":"~/logs/sonoff.log",
 	    // Flag: show logs in console
 	    "console":1
 	},
