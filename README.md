@@ -9,9 +9,12 @@ Please send me LOG file if you want to add support of any other Sonoff device.
 
 # Requirements
 1) Linux based server (Raspberry PI or any generic modern Linux)
-2) PHP 7.x (but PHP 5.x should also be ok)
+2) PHP 7.x (but PHP 5.x should also be ok) with composer dependency manager (https://getcomposer.org/)
 
 # Installation
+0) Create directory for Sonoff Server
+```pi$ mkdir ~/phpSonoff
+```
 1) Install required libs via PHP composer
 ```pi$ mkdir ~/phpSonoff
 pi$ cd ~/phpSonoff
