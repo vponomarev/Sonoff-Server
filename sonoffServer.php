@@ -13,7 +13,7 @@
 $configFile = "sonoffServer.config.json";
 
 $IOTServer = array(
-    'serverIP'		=> '192.168.1.16',
+    'serverIP'		=> '0.0.0.0',
     'configPort'	=> 2443,
     'iotPort'		=> 2333,
     'ssl'		=> array(
@@ -116,23 +116,24 @@ $cServer->count = 1;
 // onMessage event
 $cServer->onMessage = function($conn, $data) use ($uList){
     global $IOTServer, $uList, $cList, $config;
-
     // Get URL
     $requestURI = $_SERVER['REQUEST_URI'];
     if (preg_match("#^(.+?)\?#", $requestURI, $m)) {
 	$requestURI = $m[1];
     }
-    xLog($conn, "D", "HTTP", "Received request to: [".$requestURI."]");
+    xLog($conn, "D", "HTTP", "[".$conn->getLocalIp()."] Received request to: [".$requestURI."]");
     
+    $serverIP = ($IOTServer['serverIP'] == '0.0.0.0')?$conn->getLocalIp():$IOTServer['serverIP'];
+
     switch($requestURI) {
 	// Dispatch request
 	case '/dispatch/device':
 	    $reqRaw = $GLOBALS['HTTP_RAW_POST_DATA'];
 	    if (($req = json_decode($reqRaw, true)) !== null) {
 		// Received valid JSON string
-		$resp = json_encode( array('error' => 0, 'reason' => 'ok', 'IP' => $IOTServer['serverIP'], 'port' => $IOTServer['iotPort']) ) ;
+		$resp = json_encode( array('error' => 0, 'reason' => 'ok', 'IP' => $serverIP, 'port' => $IOTServer['iotPort']) ) ;
 
-		xLog($conn, "I", "HTTP", "Dispatch request from [".$req['apikey']."][".$req['deviceid']."][".$req['model']."], routing to ".$IOTServer['serverIP'].":".$IOTServer['iotPort']);
+		xLog($conn, "I", "HTTP", "Dispatch request from [".$req['apikey']."][".$req['deviceid']."][".$req['model']."], routing to ".$serverIP.":".$IOTServer['iotPort']);
 		xLog($conn, "D", "HTTP", "Request data: ".$reqRaw);
 		xLog($conn, "D", "HTTP", "Resp data: ".$resp);
 
