@@ -13,7 +13,8 @@ Please send me LOG file if you want to add support of any other Sonoff device.
 
 # Installation
 0) Create directory for Sonoff Server
-```pi$ mkdir ~/phpSonoff
+```
+pi$ mkdir ~/phpSonoff
 ```
 1) Install required libs via PHP composer
 ```pi$ mkdir ~/phpSonoff
