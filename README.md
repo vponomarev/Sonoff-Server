@@ -42,6 +42,7 @@ https://<serverIP>:<configPort>/
 ```
 WEB GUI example:
 ![](https://github.com/vponomarev/Sonoff-Server/blob/master/doc/Sonoff-Server-GUI.PNG)
+![](https://github.com/vponomarev/Sonoff-Server/blob/master/doc/Sonoff-Server-GUI2.PNG)
 
 # API
 1) List of connected devices:
