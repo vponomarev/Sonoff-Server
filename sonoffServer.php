@@ -6,7 +6,7 @@
 
 #
 # (v) Vitaly Ponomarev, vitaly.ponomarev@gmail.com
-# Publish date: 2017/10/21
+# Publish date: 2018/01/17
 #
 
 // ============================ CONFIG START ======================
@@ -118,8 +118,10 @@ $cServer->onMessage = function($conn, $data) use ($uList){
     global $IOTServer, $uList, $cList, $config;
     // Get URL
     $requestURI = $_SERVER['REQUEST_URI'];
-    if (preg_match("#^(.+?)\?#", $requestURI, $m)) {
+    $requestParams = '';
+    if (preg_match("#^(.+?)\?(.*)$#", $requestURI, $m)) {
 	$requestURI = $m[1];
+	$requestParams = $m[2];
     }
     xLog($conn, "D", "HTTP", "[".$conn->getLocalIp()."] Received request to: [".$requestURI."]");
     
@@ -193,6 +195,8 @@ $cServer->onMessage = function($conn, $data) use ($uList){
 		    }
 		    if (isset($uv['params']['switch'])) {
 			$rec['state'] = $uv['params']['switch'];
+		    } else if (isset($uv['params']['switches']) && isset($uv['params']['switches'][0])) {
+			$rec['state'] = $uv['params']['switches'][0]['switch'];
 		    }
 
 		    $aList []= $rec;
@@ -201,6 +205,39 @@ $cServer->onMessage = function($conn, $data) use ($uList){
 	    $conn->send(json_encode($aList));
 	    $conn->close();
 	    return;
+
+	// API: Get device state
+	case '/api/getState':
+	    $params = preg_split("#,#", $requestParams);
+	    $resp = '';
+	    if (isset($params[0])) {
+		$isFound = 0;
+		$dState = '#undefined';
+		foreach ($uList as $uk => $uv) {
+		    if (isset($uv['deviceInfo']['apikey']) && $uv['deviceInfo']['apikey'] == $params[0]) {
+			$isFound = 1;
+			if (isset($uv['params']['switch'])) {
+			    $dState = $uv['params']['switch'];
+			} else if (isset($uv['params']['switches']) && isset($uv['params']['switches'][0])) {
+			    $dState = $uv['params']['switches'][0]['switch'];
+			} else {
+			    $dState = '#unknown';
+			}
+			break;
+		    }
+		}
+		if (isset($params[1]) && ($params[1] == 'brief')) {
+		    $resp = $dState;
+		} else {
+		    $resp = 'state='.$dState;
+		}
+	    } else {
+		$resp = '#No API KEY is specified';
+	    }
+
+	    $conn->send($resp);
+    	    $conn->close();
+	    return;	    
 	
 	// API: Update state
 	case '/api/set':
@@ -243,6 +280,10 @@ $cServer->onMessage = function($conn, $data) use ($uList){
 	    $conn->close();
 	    return;
 
+	case '/api/debug':
+	    $conn->send("<html><body><pre>".var_export($uList, true)."</pre></body></html>");
+	    $conn->close();
+	    return;
 	    
 	default:
 	    xLog($conn, "E", "HTTP", "Received request to unsupported URL: ".$requestURI);
