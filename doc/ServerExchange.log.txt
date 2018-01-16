@@ -1,0 +1,286 @@
+Sonoff SW Init procedure
+--------------------------------
+1) Push button for ~5 second
+2) Search for new WiFi network with name ITEAD-100008db17 (Serial number?)
+3) Connect to this network with password "12345678"
+
+4) HTTP POST http://10.10.7.1/ap request for provisioning
+{"port":443,"serverName":"eu-disp.coolkit.cc","password":"<WiFi Password>","SSID":"<WiFi SSID>"}
+Response:
+{"error":0}
+
+5) HTTP GET request for device info http://10.10.7.1/device
+Response:
+{"deviceid":"<ID of device>","apikey":"<API KEY of device>","accept":"post"}
+
+
+Sonoff SW OTA eWeLink request procedure
+-------------------------------------
+????????????????
+There is a request to eu-ota.coolkit.cc
+
+
+
+
+Sonoff SW WebSocket LOG
+xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx is API KEY of device
+yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy is session API KEY from Cloud
+
+-------------------------------------
+1) post https://eu-disp.coolkit.cc/dispatch/device
+POST /dispatch/device HTTP/1.1
+Host: eu-disp.coolkit.cc
+Content-Type: application/json
+Content-Length: 177
+
+{
+	"accept":"ws;2",
+	"version":2,
+	"ts":933,
+	"deviceid":"100008db11",
+	"apikey":"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+	"model":"ITA-GZ1-GL",
+	"romVersion":"1.5.5"
+}
+
+
+RESP:
+HTTP/1.1 200 OK
+Server: openresty
+Date: Sun, 17 Sep 2017 00:42:22 GMT
+Content-Type: application/json
+Content-Length: 58
+Connection: Keep-alive
+
+{
+	"error":0,
+	"reason":"ok",
+	"IP":"35.157.208.224",
+	"port":443
+}
+
+
+2) WebSocket connection to IP <из JSON ответа>, host = iotgo.iteadstudio.com
+wss://<IP>/api/ws
+
+
+GET /api/ws HTTP/1.1
+Host: iotgo.iteadstudio.com
+Connection: upgrade
+Upgrade: websocket
+Sec-WebSocket-Key: ITEADTmobiM0x1DabcEsnw==
+Sec-WebSocket-Version: 13
+
+
+
+=========================
+Client:
+{
+	"userAgent":"device",
+	"apikey":"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+	"deviceid":"100008db11",
+	"action":"register",
+	"version":2,	
+	"romVersion":"1.5.5",
+	"model":"ITA-GZ1-GL",
+	"ts":970
+}
+
+Server:
+{
+	"error":0,
+	"deviceid":"100008db11",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"config":{
+		"devConfig":{
+				"storeAppsecret":"",
+				"bucketName":"",
+				"lengthOfVideo":0,
+				"deleteAfterDays":0,
+				"persistentPipeline":"",
+				"storeAppid":"",
+				"uploadLimit":0,
+				"statusReportUrl":"",
+				"storetype":0,
+				"callbackHost":"",
+				"persistentNotifyUrl":"",
+				"callbackUrl":"",
+				"persistentOps":"",
+				"captureNumber":0,
+				"callbackBody":""
+		},
+	"hb":1,
+	"hbInterval":145
+	}
+}
+
+
+Client:
+{
+	"userAgent":"device",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"deviceid":"100008db11",
+	"action":"date"
+}
+
+Server:
+{
+	"error":0,
+	"deviceid":"100008db11",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"date":"2017-09-17T00:24:54.955Z"
+}
+
+Client:
+{
+	"userAgent":"device",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"deviceid":"100008db11",
+	"action":"update",
+	"params":{
+		"switch":"off",
+		"fwVersion":"1.5.5",
+		"rssi":-31,
+		"staMac":"5C:CF:7F:A6:FD:F6",
+		"startup":"off"
+	}	
+}
+
+Server:
+{
+	"error":0,
+	"deviceid":"100008db11",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+}
+
+Client:
+{
+	"userAgent":"device",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"deviceid":"100008db11",
+	"action":"query",
+	"params":[
+		"timers"
+	]
+}
+
+Server:
+{
+	"error":0,
+	"deviceid":"100008db11",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"params":0
+}
+
+Server:
+{
+	"action":"update",
+	"deviceid":"100008db11",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"userAgent":"app",
+	"sequence":"1505608036953",
+	"ts":0,
+	"params":{
+		"switch":"on"
+	},
+	"from":"app"
+}
+
+Client:
+{
+	"error":0,
+	"userAgent":"device",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"deviceid":"100008db11",
+	"sequence":"1505608036953"
+}
+
+Server:
+{
+	"action":"update",
+	"deviceid":"100008db11",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"userAgent":"app",
+	"sequence":"1505608072619",
+	"ts":0,
+	"params":{
+		"timers":[
+			{
+				"coolkit_timer_type":"once",
+				"at":"2017-09-17T00:30:00.000Z",
+				"mId":"bd37062f-05e6-4b7c-918b-6e5a7041fa49",
+				"enabled":1,
+				"do":{
+					"switch":"off"
+				},
+				"type":"once"
+			}]},
+	"from":"app"
+}
+
+Client:
+{
+	"error":0,
+	"userAgent":"device",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"deviceid":"100008db11",
+	"sequence":"1505608072619"
+}
+
+Client:
+{
+	"userAgent":"device",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"deviceid":"100008db11",
+	"action":"update",
+	"params":{
+		"switch":"off",
+		"fwVersion":"1.5.5",
+		"rssi":-31,
+		"staMac":"5C:CF:7F:A6:FD:F6",
+		"startup":"off"
+	}
+}
+
+Server:
+{
+	"error":0,
+	"deviceid":"100008db11",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+}
+
+Ping    03:32:29
+Pong    03:32:29
+Ping    03:34:58
+Pong    03:34:58
+
+
+=======================
+Upgrade request from server:
+{
+	"action":"upgrade",
+	"deviceid":"100008db0d",
+	"apikey":"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+	"userAgent":"app",
+	"sequence":"1507499250325",
+	"ts":0,
+	"params":{
+		"binList":[
+			{
+				"downloadUrl":"http://52.28.103.75:8088/ota/rom/xpiAOwgVUJaRMqFkRBsoI4AVtnozgwp1/user1.1024.new.2.bin",
+				"digest":"1aee969af1daf96f3f120323cd2c167ae1aceefc23052bb0cce790afc18fc634",
+				"name":"user1.bin"
+			},
+			{
+				"downloadUrl":"http://52.28.103.75:8088/ota/rom/xpiAOwgVUJaRMqFkRBsoI4AVtnozgwp1/user2.1024.new.2.bin",
+				"digest":"6c4e02d5d5e4f74d501de9029c8fa9a7850403eb89e3d8f2ba90386358c59d47",
+				"name":"user2.bin"
+			}
+		],
+		"model":"ITA-GZ1-GL",
+		"version":"1.5.5"
+	}
+}
+
+
+
