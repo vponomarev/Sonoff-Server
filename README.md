@@ -1,3 +1,18 @@
+# PROJECT CLOSED
+ITEAD, unfortunately, added SSL Certificate Pinning feature into their firmware.
+As a result of such decision: no one else can implement alternative Server.
+
+I used my own server till last time with old firmware, but now here a time to move forward.
+I'l suggest anyone to switch to alternative firmware.
+Few days ago i've migrated all my Sonoff to ESPHome and i'm happy now.
+What you can do:
+1. Configure and install ESPHome on your Sonoff ( https://esphome.io/devices/sonoff_basic.html ). I configured it with MQTT server, but you can configure it with HomeAssistant API if you wish.
+2. Configure and install HomeAssistant server, it can be easily installed into mostly any Raspberry PI and similar linux boxes.
+
+===========================
+This part is saved for history
+===========================
+
 # Sonoff-Server
 PHP based implementation of Sonoff cloud server, running in your own home network.
 You can control your Sonoff switches without need of changing basic firmware.
