@@ -1,4 +1,4 @@
-# PROJECT CLOSED
+# PROJECT IS CLOSED
 ITEAD, unfortunately, added SSL Certificate Pinning feature into their firmware.
 As a result of such decision: no one else can implement alternative Server.
 
@@ -9,9 +9,7 @@ What you can do:
 1. Configure and install ESPHome on your Sonoff ( https://esphome.io/devices/sonoff_basic.html ). I configured it with MQTT server, but you can configure it with HomeAssistant API if you wish.
 2. Configure and install HomeAssistant server, it can be easily installed into mostly any Raspberry PI and similar linux boxes.
 
-===========================
-This part is saved for history
-===========================
+# =====[ This part is saved for history ]=====
 
 # Sonoff-Server
 PHP based implementation of Sonoff cloud server, running in your own home network.
