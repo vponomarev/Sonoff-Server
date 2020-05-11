@@ -1,0 +1,11 @@
+version: "3"
+services:
+
+  sonoff:
+    image: sonoff-server:latest
+    ports:
+      - "2443:2443"
+      - "2333:2333"
+    volumes:
+      - ./logs:/usr/src/sonoff/log
+
